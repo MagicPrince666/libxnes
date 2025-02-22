@@ -40,8 +40,21 @@
 #include "font_8x8.h"
 
 FrameBuffer::FrameBuffer(int fb_num)
+:fb_num_(fb_num)
 {
-#if defined(__linux__)
+}
+
+FrameBuffer::~FrameBuffer()
+{
+    if (fb_info_->fd) {
+        close(fb_info_->fd);
+    }
+    delete fb_info_;
+}
+
+bool FrameBuffer::Init()
+{
+    #if defined(__linux__)
     char str[64];
     int fd   = -1;
     fb_info_ = new fb_info;
@@ -50,7 +63,7 @@ FrameBuffer::FrameBuffer(int fb_num)
     // if(ioctl(tty, KDSETMODE, KD_GRAPHICS) == -1)
     // 	printf("Failed to set graphics mode on tty1\n");
 
-    sprintf(str, "/dev/fb%d", fb_num);
+    sprintf(str, "/dev/fb%d", fb_num_);
     fd = open(str, O_RDWR);
 
     ASSERT(fd >= 0);
@@ -73,12 +86,7 @@ FrameBuffer::FrameBuffer(int fb_num)
 
     fb_info_->ptr = ptr;
 #endif
-}
-
-FrameBuffer::~FrameBuffer()
-{
-    close(fb_info_->fd);
-    delete fb_info_;
+    return true;
 }
 
 void FrameBuffer::ClearArea(int x, int y, int w, int h)

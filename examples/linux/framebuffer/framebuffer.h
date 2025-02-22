@@ -72,7 +72,31 @@ class FrameBuffer
 public:
     FrameBuffer(int fb_num);
     ~FrameBuffer();
+
+    /**
+     * @brief 初始化framebuffer
+     * @return true 
+     * @return false 
+     */
+    bool Init();
+
+    /**
+     * @brief 刷屏
+     * @param color 
+     */
     void ScreenSolid(uint32_t color);
+
+    /**
+     * @brief 绘制字符
+     * @param x 
+     * @param y 
+     * @param s 
+     * @param maxlen 
+     * @param color 
+     * @param clear 
+     * @param clearlen 
+     * @return int 
+     */
     int PutString(int x, int y, char *s, int maxlen,
                   int color, bool clear, int clearlen);
 
@@ -82,6 +106,7 @@ private:
     void PutChar(int x, int y, char c, uint32_t color);
 
     struct fb_info *fb_info_;
+    int fb_num_;
 };
 
 #endif
