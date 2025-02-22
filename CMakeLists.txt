@@ -3,7 +3,7 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 option(EXAMPLE "shall we complie example" on)
 # INCLUDE(build_for_rv1126)
 
-project(xnes VERSION 0.1 LANGUAGES C)
+project(xnes VERSION 0.1 LANGUAGES C CXX)
 
 # set(CMAKE_BUILD_TYPE "Release")
 # set(CMAKE_BUILD_TYPE "Debug")
@@ -50,12 +50,14 @@ find_package(SDL2 REQUIRED)
 # ENDIF ()
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/src
+	src
+	src/framebuffer/
 	${SDL2_INCLUDE_DIRS}
 )
 
 file(GLOB main_srcs 
     src/*.c
+	src/framebuffer/*.cpp
 	src/mapper/*.c
 	examples/linux/main.c
 )
