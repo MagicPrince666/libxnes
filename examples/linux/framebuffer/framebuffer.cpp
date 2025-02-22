@@ -36,7 +36,7 @@
 #include <linux/kd.h>
 #endif
 
-#include "common.h"
+#include "framebuffer.h"
 #include "font_8x8.h"
 
 FrameBuffer::FrameBuffer(int fb_num)

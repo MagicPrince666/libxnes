@@ -17,8 +17,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef __FRAME_BUFFER_H__
+#define __FRAME_BUFFER_H__
 
 #include <stdint.h>
 #include <stdio.h>
