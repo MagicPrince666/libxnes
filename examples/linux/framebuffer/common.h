@@ -20,8 +20,8 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #if defined(__linux__)
 #include <linux/fb.h>
 #endif
@@ -29,47 +29,59 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#define ASSERT(x) if (!(x)) \
-	{ perror("assert(" __FILE__ ":" TOSTRING(__LINE__) "): "); exit(1); }
-#define FBCTL0(ctl) if (ioctl(fd, ctl))\
-	{ perror("fbctl0(" __FILE__ ":" TOSTRING(__LINE__) "): "); exit(1); }
-#define FBCTL1(ctl, arg1) if (ioctl(fd, ctl, arg1))\
-	{ perror("fbctl1(" __FILE__ ":" TOSTRING(__LINE__) "): "); exit(1); }
+#define ASSERT(x)                                                \
+    if (!(x)) {                                                  \
+        perror("assert(" __FILE__ ":" TOSTRING(__LINE__) "): "); \
+        exit(1);                                                 \
+    }
+#define FBCTL0(ctl)                                              \
+    if (ioctl(fd, ctl)) {                                        \
+        perror("fbctl0(" __FILE__ ":" TOSTRING(__LINE__) "): "); \
+        exit(1);                                                 \
+    }
+#define FBCTL1(ctl, arg1)                                        \
+    if (ioctl(fd, ctl, arg1)) {                                  \
+        perror("fbctl1(" __FILE__ ":" TOSTRING(__LINE__) "): "); \
+        exit(1);                                                 \
+    }
 
-#define IOCTL0(fd, ctl) if (ioctl(fd, ctl))\
-	{ perror("ioctl0(" __FILE__ ":" TOSTRING(__LINE__) "): "); exit(1); }
-#define IOCTL1(fd, ctl, arg1) if (ioctl(fd, ctl, arg1))\
-	{ perror("ioctl1(" __FILE__ ":" TOSTRING(__LINE__) "): "); exit(1); }
+#define IOCTL0(fd, ctl)                                          \
+    if (ioctl(fd, ctl)) {                                        \
+        perror("ioctl0(" __FILE__ ":" TOSTRING(__LINE__) "): "); \
+        exit(1);                                                 \
+    }
+#define IOCTL1(fd, ctl, arg1)                                    \
+    if (ioctl(fd, ctl, arg1)) {                                  \
+        perror("ioctl1(" __FILE__ ":" TOSTRING(__LINE__) "): "); \
+        exit(1);                                                 \
+    }
 
-struct fb_info
-{
-	int fd;
+struct fb_info {
+    int fd;
 
-	void *ptr;
+    void *ptr;
 #if defined(__linux__)
-	struct fb_var_screeninfo var;
-	struct fb_fix_screeninfo fix;
+    struct fb_var_screeninfo var;
+    struct fb_fix_screeninfo fix;
 #endif
-	uint32_t bytespp;
+    uint32_t bytespp;
 };
 
-class LcdRgb {
+class FrameBuffer
+{
 public:
-	LcdRgb(int fb_num);
-	~LcdRgb();
-	void fb_update_window(int fd, short x, short y, short w, short h);
-	void fb_sync_gfx(int fd);
-	void fill_screen_solid(uint32_t color);
-	int fb_put_string(int x, int y, char *s, int maxlen,
-			int color, bool clear, int clearlen);
+    FrameBuffer(int fb_num);
+    ~FrameBuffer();
+    void ScreenSolid(uint32_t color);
+    int PutString(int x, int y, char *s, int maxlen,
+                  int color, bool clear, int clearlen);
 
 private:
-	void draw_pixel(int x, int y, uint32_t color);
-	void fb_clear_area(int x, int y, int w, int h);
-	void fb_put_char(int x, int y, char c,
-		uint32_t color);
+    void DrawPixel(int x, int y, uint32_t color);
+    void ClearArea(int x, int y, int w, int h);
+    void PutChar(int x, int y, char c, uint32_t color);
 
-	struct fb_info* fb_info_;
+    struct fb_info *fb_info_;
 };
 
 #endif
