@@ -118,15 +118,15 @@ void LcdRgb::fb_put_char(int x, int y, char c,
 					((bits >> (7 - j)) & 1)) {
 				switch (var->bits_per_pixel) {
 				case 8:
-					p8 =  (uint8_t*)(fb_info_->ptr + loc);
+					p8 =  (uint8_t*)(fb_info_->ptr) + loc;
 					*p8 = color;
 				case 16:
-					p16 = (uint16_t*)(fb_info_->ptr + loc);
+					p16 = (uint16_t*)(fb_info_->ptr) + loc;
 					*p16 = color;
 					break;
 				case 24:
 				case 32:
-					p32 = (uint32_t*)(fb_info_->ptr + loc);
+					p32 = (uint32_t*)(fb_info_->ptr) + loc;
 					*p32 = color;
 					break;
 				}
@@ -162,8 +162,7 @@ void LcdRgb::draw_pixel(int x, int y, unsigned color)
 	switch(fb_info_->var.bits_per_pixel) {
 		case 8 : {
 			uint8_t *p;
-			fbmem += fb_info_->fix.line_length * y;
-			p = (uint8_t*)fbmem;
+			p = (uint8_t*)fbmem + fb_info_->fix.line_length * y;
 			p += x;
 			*p = color;
 		} break;
@@ -177,8 +176,7 @@ void LcdRgb::draw_pixel(int x, int y, unsigned color)
 			g = g * 64 / 256;
 			b = b * 32 / 256;
 			c = (r << 11) | (g << 5) | (b << 0);
-			fbmem += fb_info_->fix.line_length * y;
-			p = (uint16_t*)fbmem;
+			p = (uint16_t*)fbmem + fb_info_->fix.line_length * y;
 			p += x;
 			*p = c;
 		} break;
@@ -191,8 +189,7 @@ void LcdRgb::draw_pixel(int x, int y, unsigned color)
 		} break;
 		default: {
 			uint32_t *p;
-			fbmem += fb_info_->fix.line_length * y;
-			p = (uint32_t*)fbmem;
+			p = (uint32_t*)fbmem + fb_info_->fix.line_length * y;
 			p += x;
 			*p = color;
 		} break;
