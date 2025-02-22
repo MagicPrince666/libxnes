@@ -51,15 +51,15 @@ find_package(SDL2 REQUIRED)
 
 include_directories(
 	src
-	src/framebuffer/
+	examples/linux/framebuffer/
 	${SDL2_INCLUDE_DIRS}
 )
 
 file(GLOB main_srcs 
     src/*.c
-	src/framebuffer/*.cpp
 	src/mapper/*.c
-	examples/linux/main.c
+	examples/linux/framebuffer/*.cpp
+	examples/linux/main.cpp
 )
 
 add_executable(${PROJECT_NAME} ${main_srcs})

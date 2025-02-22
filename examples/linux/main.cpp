@@ -56,7 +56,7 @@ static struct window_context_t * window_context_alloc(void)
 	Uint32 r, g, b, a;
 	int bpp;
 
-	wctx = malloc(sizeof(struct window_context_t));
+	wctx = (struct window_context_t *)malloc(sizeof(struct window_context_t));
 	if(!wctx)
 		return NULL;
 
@@ -127,7 +127,7 @@ static void window_context_free(struct window_context_t * wctx)
 
 static void window_context_screen_refresh(struct window_context_t * wctx)
 {
-	uint32_t * fb = wctx->surface->pixels;
+	uint32_t * fb = (uint32_t *)(wctx->surface->pixels);
 	for(int y = 0; y < 240; y++)
 	{
 		for(int x = 0; x < 256; x++)
@@ -185,7 +185,7 @@ static void * file_load(const char * filename, uint64_t * len)
 	if(in)
 	{
 		uint64_t offset = 0, bufsize = 8192;
-		char * buf = malloc(bufsize);
+		char * buf = (char *)malloc(bufsize);
 		while(1)
 		{
 			uint64_t len = bufsize - offset;
@@ -194,7 +194,7 @@ static void * file_load(const char * filename, uint64_t * len)
 			if(n < len)
 				break;
 			bufsize *= 2;
-			buf = realloc(buf, bufsize);
+			buf = (char *)realloc(buf, bufsize);
 		}
 		if(len)
 			*len = offset;
