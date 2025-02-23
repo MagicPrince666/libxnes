@@ -23,7 +23,7 @@
  */
 
 #include <xnes.h>
-#if defined(DFRAME_BUFFER)
+#if defined(FRAME_BUFFER)
 #include "framebuffer.h"
 #else
 #include "sdlshow.h"
@@ -31,7 +31,7 @@
 
 int main(int argc, char * argv[])
 {
-#if defined(DFRAME_BUFFER)
+#if defined(FRAME_BUFFER)
 	
 #else
 	SdlShow sdl;
