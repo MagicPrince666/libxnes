@@ -52,7 +52,6 @@ else()
   # 交叉编译fb应用
   message(STATUS "cross compile")
 endif()
-  list(APPEND COMMON_LIBRARIES stdc++fs atomic)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 if (${MACHINES} MATCHES "arm64")
   message(STATUS "apple slicon compile")
