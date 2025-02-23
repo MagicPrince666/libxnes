@@ -1,7 +1,7 @@
 #include <fcntl.h>
+#include <iostream>
 #include <string.h>
 #include <unistd.h>
-#include <iostream>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -12,17 +12,18 @@
 #include <linux/kd.h>
 #endif
 
-#include "framebuffer.h"
 #include "font_8x8.h"
+#include "framebuffer.h"
 
 FrameBuffer::FrameBuffer(int fb_num)
-:fb_num_(fb_num)
+    : fb_num_(fb_num)
 {
 }
 
 FrameBuffer::~FrameBuffer()
 {
     if (fb_info_->fd) {
+        munmap(fb_info_->ptr, fb_info_->fix.smem_len);
         close(fb_info_->fd);
     }
     delete fb_info_;
@@ -44,18 +45,29 @@ bool FrameBuffer::Init()
     ASSERT(fd >= 0);
 
     fb_info_->fd = fd;
-    IOCTL1(fd, FBIOGET_VSCREENINFO, &fb_info_->var);
-    IOCTL1(fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
+    int stat     = ioctl(fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
+    if (stat < 0) {
+        perror("Error getting fix screeninfo");
+        return false;
+    }
+    stat = ioctl(fd, FBIOGET_VSCREENINFO, &fb_info_->var);
+    if (stat < 0) {
+        perror("Error getting var screeninfo");
+        return false;
+    }
+    stat = ioctl(fd, FBIOPUT_VSCREENINFO, &fb_info_->var);
+    if (stat < 0) {
+        perror("Error setting mode");
+        return false;
+    }
 
-    printf("fb res %dx%d virtual %dx%d, line_len %d, bpp %d\n",
+    printf("fb res %dx%d virtual %dx%d, smem_len %d, bpp %d\n",
            fb_info_->var.xres, fb_info_->var.yres,
            fb_info_->var.xres_virtual, fb_info_->var.yres_virtual,
-           fb_info_->fix.line_length, fb_info_->var.bits_per_pixel);
+           fb_info_->fix.smem_len, fb_info_->var.bits_per_pixel);
 
-    void *ptr = mmap(0,
-                     fb_info_->var.yres_virtual * fb_info_->fix.line_length,
-                     PROT_WRITE | PROT_READ,
-                     MAP_SHARED, fd, 0);
+    void *ptr = mmap(nullptr, fb_info_->fix.smem_len,
+                     PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
 
     ASSERT(ptr != MAP_FAILED);
 
@@ -82,7 +94,7 @@ void FrameBuffer::ClearArea(int x, int y, int w, int h)
 }
 
 void FrameBuffer::PutChar(int x, int y, char c,
-                              unsigned color)
+                          unsigned color)
 {
 #if defined(__linux__)
     int i, j, bits, loc;
