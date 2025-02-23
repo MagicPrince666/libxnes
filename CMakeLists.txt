@@ -12,7 +12,9 @@ add_definitions(-DBACKTRACE_DEBUG)
 endif ()
 set(CMAKE_CXX_STANDARD 11)
 
-MESSAGE(STATUS ${CMAKE_SYSTEM_NAME})
+message(STATUS "System : ${CMAKE_SYSTEM_NAME}")
+message(STATUS "Target system processor: ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "Host architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 # 执行git命令，并把结果重定向到自定义变量（此处是我的变量<GIT_VERSION>）。
 execute_process(

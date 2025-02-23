@@ -28,6 +28,14 @@ cd examples/linux/output/
 ./xnes <rom.nes>
 ```
 
+## 交叉编译
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_TOOLCHAIN_FILE=cmake/build_for_d1x.cmake ..
+cmake -DCMAKE_TOOLCHAIN_FILE=cmake/build_for_d1x.cmake -DCMAKE_BUILD_TYPE=Debug ..
+```
+
 ## Screenshots
 ![super-mario](documents/screenshots/super-mario.png)
 ![contra](documents/screenshots/contra.png)

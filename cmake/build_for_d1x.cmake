@@ -6,7 +6,9 @@ SET(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 SET(CMAKE_SYSTEM_PROCESSOR "riscv64")
 
 # 工具链地址
-SET(TOOLCHAIN_DIR  "/home/leo/tina/out/d1s-mq/staging_dir/toolchain/bin/")
+SET(TOOLCHAIN_DIR  "/home/prince/tina/out/d1s-mq/staging_dir/toolchain/bin/")
+
+set(CMAKE_PREFIX_PATH ${TOOLCHAIN_DIR}../../target/usr)
 
 # 设置头文件所在目录
 include_directories(
@@ -21,8 +23,6 @@ include_directories(
 link_directories(
     ${TOOLCHAIN_DIR}../../target/usr/lib
 )
-SET(OPENSSL_CRYPTO_LIBRARY crypto)
-SET(OPENSSL_SSL_LIBRARY ssl)
 
 # sunxi t113
 SET(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}riscv64-unknown-linux-gnu-gcc)

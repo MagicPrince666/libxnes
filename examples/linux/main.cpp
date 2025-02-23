@@ -208,7 +208,7 @@ static void window_audio_callback(void * ctx, float v)
 {
 	struct window_context_t * wctx = (struct window_context_t *)ctx;
 	SDL_QueueAudio(wctx->audio, &v, sizeof(float));
-	SDL_QueueAudio(wctx->audio, &v, sizeof(float));
+	// SDL_QueueAudio(wctx->audio, &v, sizeof(float));
 }
 
 static void window_context_reload(struct window_context_t * wctx, const char * filename)
