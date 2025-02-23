@@ -42,15 +42,30 @@ set(COMMON_LIBRARIES
     dl
 )
 
+include_directories(
+	src
+)
+
+file(GLOB main_srcs 
+    src/*.c
+	src/mapper/*.c
+	examples/linux/main.cpp
+)
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
   # 直接编译
   message(STATUS "host compile")
   find_package(SDL2 REQUIRED)
   list(APPEND COMMON_LIBRARIES ${SDL2_LIBRARIES})
+  include_directories(${SDL2_INCLUDE_DIRS} examples/linux/sdl)
+  list(APPEND main_srcs examples/linux/sdl/sdlshow.cpp)
 else()
   # 交叉编译fb应用
   message(STATUS "cross compile")
+  add_definitions(-DFRAME_BUFFER)
+  include_directories(examples/linux/framebuffer)
+  list(APPEND main_srcs examples/linux/framebuffer/framebuffer.cpp)
 endif()
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 if (${MACHINES} MATCHES "arm64")
@@ -60,24 +75,12 @@ else()
 endif()
   find_package(SDL2 REQUIRED)
   list(APPEND COMMON_LIBRARIES ${SDL2_LIBRARIES})
-  include_directories(${SDL2_INCLUDE_DIRS})
+  include_directories(${SDL2_INCLUDE_DIRS} examples/linux/sdl)
+  list(APPEND main_srcs examples/linux/sdl/sdlshow.cpp)
 else()
   # windows not support
   message(STATUS "System : ${CMAKE_SYSTEM_NAME} not support")
 endif()
-
-include_directories(
-	src
-	examples/linux/framebuffer/
-	${SDL2_INCLUDE_DIRS}
-)
-
-file(GLOB main_srcs 
-    src/*.c
-	src/mapper/*.c
-	examples/linux/framebuffer/*.cpp
-	examples/linux/main.cpp
-)
 
 add_executable(${PROJECT_NAME} ${main_srcs})
 
