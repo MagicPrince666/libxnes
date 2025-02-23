@@ -38,18 +38,34 @@ add_definitions( -DGIT_PATH=\"${GIT_PATH}\")
 
 add_definitions(-DPROJECT_PATH="${PROJECT_SOURCE_DIR}")
 
-find_package(SDL2 REQUIRED)
+set(COMMON_LIBRARIES
+    dl
+)
 
-# IF (WIN32)
-# 	MESSAGE(STATUS "Now is windows.")
-#     add_subdirectory(iocp)
-# ELSEIF (APPLE)
-# 	MESSAGE(STATUS "Now is Apple systens.")
-#     add_subdirectory(kqueue)
-# ELSEIF (UNIX)
-# 	MESSAGE(STATUS "Now is UNIX-like OS's.")
-#     add_subdirectory(epoll)
-# ENDIF ()
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
+  # 直接编译
+  message(STATUS "host compile")
+  find_package(SDL2 REQUIRED)
+  list(APPEND COMMON_LIBRARIES ${SDL2_LIBRARIES})
+else()
+  # 交叉编译fb应用
+  message(STATUS "cross compile")
+endif()
+  list(APPEND COMMON_LIBRARIES stdc++fs atomic)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if (${MACHINES} MATCHES "arm64")
+  message(STATUS "apple slicon compile")
+else()
+  message(STATUS "intel compile")
+endif()
+  find_package(SDL2 REQUIRED)
+  list(APPEND COMMON_LIBRARIES ${SDL2_LIBRARIES})
+  include_directories(${SDL2_INCLUDE_DIRS})
+else()
+  # windows not support
+  message(STATUS "System : ${CMAKE_SYSTEM_NAME} not support")
+endif()
 
 include_directories(
 	src
@@ -67,7 +83,7 @@ file(GLOB main_srcs
 add_executable(${PROJECT_NAME} ${main_srcs})
 
 target_link_libraries(${PROJECT_NAME} 
-	${SDL2_LIBRARIES}
+	${COMMON_LIBRARIES}
 )
 
 install(TARGETS ${PROJECT_NAME}
