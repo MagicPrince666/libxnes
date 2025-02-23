@@ -46,6 +46,13 @@
         exit(1);                                                 \
     }
 
+#define BLACK   0x000000      /* Black */
+#define RED     0xDC143C      /* Red */
+#define GREEN   0x008000      /* Green */
+#define YELLOW  0xFFFFE0      /* Yellow */
+#define BLUE    0x0000FF      /* Blue */
+#define WHITE   0xFFFFFF      /* White */
+
 struct fb_info {
     int fd;
 

@@ -67,6 +67,7 @@ bool FrameBuffer::Init()
 
     fb_info_->ptr = ptr;
 #endif
+    ScreenSolid(BLUE);
     return true;
 }
 
