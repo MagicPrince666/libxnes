@@ -1,12 +1,7 @@
-#include <errno.h>
 #include <fcntl.h>
-#include <getopt.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
+#include <iostream>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -35,17 +30,16 @@ FrameBuffer::~FrameBuffer()
 
 bool FrameBuffer::Init()
 {
-    #if defined(__linux__)
-    char str[64];
-    int fd   = -1;
+#if defined(__linux__)
     fb_info_ = new fb_info;
     // int tty = open("/dev/tty1", O_RDWR);
 
     // if(ioctl(tty, KDSETMODE, KD_GRAPHICS) == -1)
     // 	printf("Failed to set graphics mode on tty1\n");
 
-    sprintf(str, "/dev/fb%d", fb_num_);
-    fd = open(str, O_RDWR);
+    std::string dev = "/dev/fb" + std::to_string(fb_num_);
+    std::cout << "device = " << dev << std::endl;
+    int fd = open(dev.c_str(), O_RDWR);
 
     ASSERT(fd >= 0);
 
