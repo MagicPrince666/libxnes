@@ -34,7 +34,8 @@ int main(int argc, char * argv[])
 #if defined(DFRAME_BUFFER)
 	
 #else
-	SdlLoop(argc, argv);
+	SdlShow sdl;
+	sdl.SdlLoop(argc, argv);
 #endif
 	return 0;
 }
