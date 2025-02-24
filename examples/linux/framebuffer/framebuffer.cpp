@@ -55,11 +55,11 @@ bool FrameBuffer::Init()
         perror("Error getting var screeninfo");
         return false;
     }
-    stat = ioctl(fd, FBIOPUT_VSCREENINFO, &fb_info_->var);
-    if (stat < 0) {
-        perror("Error setting mode");
-        return false;
-    }
+    // stat = ioctl(fd, FBIOPUT_VSCREENINFO, &fb_info_->var);
+    // if (stat < 0) {
+    //     perror("Error setting mode");
+    //     return false;
+    // }
 
     printf("fb res %dx%d virtual %dx%d, smem_len %d, bpp %d\n",
            fb_info_->var.xres, fb_info_->var.yres,
