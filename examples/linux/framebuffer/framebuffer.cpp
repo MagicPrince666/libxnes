@@ -7,10 +7,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#if defined(__linux__)
 #include <linux/fb.h>
 #include <linux/kd.h>
-#endif
 
 #include "font_8x8.h"
 #include "framebuffer.h"
@@ -31,7 +29,6 @@ FrameBuffer::~FrameBuffer()
 
 bool FrameBuffer::Init()
 {
-#if defined(__linux__)
     fb_info_ = new fb_info;
     // int tty = open("/dev/tty1", O_RDWR);
 
@@ -66,20 +63,20 @@ bool FrameBuffer::Init()
            fb_info_->var.xres_virtual, fb_info_->var.yres_virtual,
            fb_info_->fix.smem_len, fb_info_->var.bits_per_pixel);
 
-    void *ptr = mmap(nullptr, fb_info_->fix.smem_len,
-                     PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+    /*计算屏幕缓冲区大小*/
+    int32_t screensize = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
 
-    ASSERT(ptr != MAP_FAILED);
+    fb_info_->ptr = (uint8_t *)mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
+                                    MAP_SHARED, fb_info_->fd, 0);
 
-    fb_info_->ptr = ptr;
-#endif
-    ScreenSolid(BLUE);
+    ASSERT(fb_info_->ptr != MAP_FAILED);
+
+    ScreenSolid(RGB_BLUE);
     return true;
 }
 
 void FrameBuffer::ClearArea(int x, int y, int w, int h)
 {
-#if defined(__linux__)
     int i = 0;
     int loc;
     char *fbuffer                 = (char *)fb_info_->ptr;
@@ -90,13 +87,11 @@ void FrameBuffer::ClearArea(int x, int y, int w, int h)
         loc = (x + var->xoffset) * (var->bits_per_pixel / 8) + (y + i + var->yoffset) * fix->line_length;
         memset(fbuffer + loc, 0, w * var->bits_per_pixel / 8);
     }
-#endif
 }
 
 void FrameBuffer::PutChar(int x, int y, char c,
                           unsigned color)
 {
-#if defined(__linux__)
     int i, j, bits, loc;
     uint8_t *p8;
     uint16_t *p16;
@@ -127,7 +122,6 @@ void FrameBuffer::PutChar(int x, int y, char c,
             }
         }
     }
-#endif
 }
 
 int FrameBuffer::PutString(int x, int y, char *s, int maxlen,
@@ -150,7 +144,6 @@ int FrameBuffer::PutString(int x, int y, char *s, int maxlen,
 
 void FrameBuffer::DrawPixel(int x, int y, unsigned color)
 {
-#if defined(__linux__)
     void *fbmem;
 
     fbmem = fb_info_->ptr;
@@ -189,12 +182,10 @@ void FrameBuffer::DrawPixel(int x, int y, unsigned color)
         *p = color;
     } break;
     }
-#endif
 }
 
 void FrameBuffer::ScreenSolid(uint32_t color)
 {
-#if defined(__linux__)
     uint32_t x, y;
     uint32_t h = fb_info_->var.yres;
     uint32_t w = fb_info_->var.xres;
@@ -204,5 +195,104 @@ void FrameBuffer::ScreenSolid(uint32_t color)
             DrawPixel(x, y, color);
         }
     }
-#endif
+}
+
+int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxlen,
+                              uint32_t color, bool clear, int32_t clearlen)
+{
+    int32_t w    = 0;
+    char str[40] = {0};
+
+    int32_t len = snprintf(str, sizeof(str), "%d", value);
+    str[len]    = 0;
+
+    if (clear) {
+        ClearArea(x, y, clearlen * 8, 8);
+    }
+
+    for (uint32_t i = 0; i < strlen(str) && i < maxlen; i++) {
+        PutChar((x + 8 * i), y, str[i], color);
+        w += 8;
+    }
+
+    return w;
+}
+
+void FrameBuffer::DrawLine(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color)
+{
+    int32_t t;
+    int32_t xerr = 0, yerr = 0, delta_x, delta_y, distance;
+    int32_t incx, incy, uRow, uCol;
+    delta_x = x2 - x1; // 计算坐标增量
+    delta_y = y2 - y1;
+    uRow    = x1;
+    uCol    = y1;
+    if (delta_x > 0) {
+        incx = 1; // 设置单步方向
+    } else if (delta_x == 0) {
+        incx = 0; // 垂直线
+    } else {
+        incx    = -1;
+        delta_x = -delta_x;
+    }
+    if (delta_y > 0) {
+        incy = 1;
+    } else if (delta_y == 0) {
+        incy = 0; // 水平线
+    } else {
+        incy    = -1;
+        delta_y = -delta_y;
+    }
+    if (delta_x > delta_y) {
+        distance = delta_x; // 选取基本增量坐标轴
+    } else {
+        distance = delta_y;
+    }
+
+    for (t = 0; t <= distance + 1; t++) { // 画线输出
+        DrawPixel(uRow, uCol, color);
+        xerr += delta_x;
+        yerr += delta_y;
+        if (xerr > distance) {
+            xerr -= distance;
+            uRow += incx;
+        }
+        if (yerr > distance) {
+            yerr -= distance;
+            uCol += incy;
+        }
+    }
+}
+
+void FrameBuffer::DrawCircle(int32_t x, int32_t y, int32_t r, uint32_t color)
+{
+    int32_t a, b, num;
+    a = 0;
+    b = r;
+    while (2 * b * b >= r * r) {        // 1/8圆即可
+        DrawPixel(x + a, y - b, color); // 0~1
+        DrawPixel(x - a, y - b, color); // 0~7
+        DrawPixel(x - a, y + b, color); // 4~5
+        DrawPixel(x + a, y + b, color); // 4~3
+
+        DrawPixel(x + b, y + a, color); // 2~3
+        DrawPixel(x + b, y - a, color); // 2~1
+        DrawPixel(x - b, y - a, color); // 6~7
+        DrawPixel(x - b, y + a, color); // 6~5
+
+        a++;
+        num = (a * a + b * b) - r * r;
+        if (num > 0) {
+            b--;
+            a--;
+        }
+    }
+}
+
+void FrameBuffer::DrawRectangle(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color)
+{
+    DrawLine(x1, y1, x2, y1, color);
+    DrawLine(x1, y1, x1, y2, color);
+    DrawLine(x1, y2, x2, y2, color);
+    DrawLine(x2, y1, x2, y2, color);
 }
