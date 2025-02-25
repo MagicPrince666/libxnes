@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#include <xnes.h>
 #include <memory>
+#include <xnes.h>
 #if defined(FRAME_BUFFER)
 #include "framebuffer.h"
 #else
@@ -35,10 +35,10 @@
 #include <execinfo.h>
 #endif
 #include <csignal>
-#include <cstdlib>
 #include <cstdio>
-#include <fstream>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 
 #define PRINT_SIZE_ 100
@@ -115,7 +115,7 @@ static void print_version(void)
     std::cout << "==============================================================" << std::endl;
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
 #if defined(__unix__) || defined(__APPLE__)
     signal(SIGPIPE, _signal_handler); // SIGPIPE，管道破裂。
@@ -128,11 +128,11 @@ int main(int argc, char * argv[])
     print_version();
 
 #if defined(FRAME_BUFFER)
-	std::unique_ptr<FrameBuffer> fb(new FrameBuffer(0));
-	fb->Init();
+    std::unique_ptr<FrameBuffer> fb(new FrameBuffer("/dev/fb0"));
+    fb->Init();
 #else
-	std::unique_ptr<SdlShow> sdl(new SdlShow());
-	sdl->SdlLoop(argc, argv);
+    std::unique_ptr<SdlShow> sdl(new SdlShow());
+    sdl->SdlLoop(argc, argv);
 #endif
-	return 0;
+    return 0;
 }

@@ -1,84 +1,85 @@
+#include <errno.h>
 #include <fcntl.h>
-#include <iostream>
+#include <getopt.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
+#include <fcntl.h>
+#include <linux/fb.h>
+#include <new>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <linux/fb.h>
-#include <linux/kd.h>
-
 #include "font_8x8.h"
 #include "framebuffer.h"
 
-FrameBuffer::FrameBuffer(int fb_num)
-    : fb_num_(fb_num)
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+
+FrameBuffer::FrameBuffer(std::string dev) : fb_name_(dev)
 {
+    fb_info_ = std::make_shared<struct fb_info>();
 }
 
 FrameBuffer::~FrameBuffer()
 {
-    if (fb_info_->fd) {
-        munmap(fb_info_->ptr, fb_info_->fix.smem_len);
+    ScreenSolid(0x0);
+
+    if (fb_info_->ptr) {
+        int32_t stat = munmap(fb_info_->ptr, fb_info_->fix.smem_len);
+        if (stat < 0) {
+            perror("Error munmap'ing framebuffer device");
+        }
+    }
+    if (fb_info_->fd > 0) {
         close(fb_info_->fd);
     }
-    delete fb_info_;
+
+    if (bl_fd_) {
+        write(bl_fd_, "1", 1);
+        close(bl_fd_);
+    }
 }
 
 bool FrameBuffer::Init()
 {
-    fb_info_ = new fb_info;
-    // int tty = open("/dev/tty1", O_RDWR);
+    fb_info_->fd = open(fb_name_.c_str(), O_RDWR);
 
-    // if(ioctl(tty, KDSETMODE, KD_GRAPHICS) == -1)
-    // 	printf("Failed to set graphics mode on tty1\n");
+    ASSERT(fb_info_->fd >= 0);
 
-    std::string dev = "/dev/fb" + std::to_string(fb_num_);
-    std::cout << "device = " << dev << std::endl;
-    int fd = open(dev.c_str(), O_RDWR);
-
-    ASSERT(fd >= 0);
-
-    fb_info_->fd = fd;
-    int stat     = ioctl(fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
-    if (stat < 0) {
-        perror("Error getting fix screeninfo");
-        return false;
-    }
-    stat = ioctl(fd, FBIOGET_VSCREENINFO, &fb_info_->var);
-    if (stat < 0) {
-        perror("Error getting var screeninfo");
-        return false;
-    }
-    // stat = ioctl(fd, FBIOPUT_VSCREENINFO, &fb_info_->var);
-    // if (stat < 0) {
-    //     perror("Error setting mode");
-    //     return false;
-    // }
+    IOCTL1(fb_info_->fd, FBIOGET_VSCREENINFO, &fb_info_->var);
+    IOCTL1(fb_info_->fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
 
     printf("fb res %dx%d virtual %dx%d, smem_len %d, bpp %d\n",
            fb_info_->var.xres, fb_info_->var.yres,
            fb_info_->var.xres_virtual, fb_info_->var.yres_virtual,
-           fb_info_->fix.smem_len, fb_info_->var.bits_per_pixel);
+           fb_info_->fix.line_length, fb_info_->var.bits_per_pixel);
 
     /*计算屏幕缓冲区大小*/
     int32_t screensize = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
 
-    fb_info_->ptr = mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
+    fb_info_->i_line_width  = fb_info_->var.xres * fb_info_->var.bits_per_pixel / 8;
+    fb_info_->i_pixel_width = fb_info_->var.bits_per_pixel / 8;
+
+    fb_info_->ptr = (uint8_t *)mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
                                     MAP_SHARED, fb_info_->fd, 0);
+    // spdlog::info("ptr {} size {}", fb_info_->ptr, screensize);
 
     ASSERT(fb_info_->ptr != MAP_FAILED);
 
-    ScreenSolid(RGB_BLUE);
+    ScreenSolid(RGB_RED);
     return true;
 }
 
-void FrameBuffer::ClearArea(int x, int y, int w, int h)
+void FrameBuffer::ClearArea(int32_t x, int32_t y, int32_t w, int32_t h)
 {
-    int i = 0;
-    int loc;
+    int32_t i = 0;
+    int32_t loc;
     char *fbuffer                 = (char *)fb_info_->ptr;
     struct fb_var_screeninfo *var = &fb_info_->var;
     struct fb_fix_screeninfo *fix = &fb_info_->fix;
@@ -89,17 +90,18 @@ void FrameBuffer::ClearArea(int x, int y, int w, int h)
     }
 }
 
-void FrameBuffer::PutChar(int x, int y, char c,
-                          unsigned color)
+void FrameBuffer::PutChar(int32_t x, int32_t y, char c,
+                          uint32_t color)
 {
-    int i, j, bits, loc;
+    int32_t j, bits;
+    uint32_t loc;
     uint8_t *p8;
     uint16_t *p16;
     uint32_t *p32;
     struct fb_var_screeninfo *var = &fb_info_->var;
     struct fb_fix_screeninfo *fix = &fb_info_->fix;
 
-    for (i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; i++) {
         bits = fontdata_8x8[8 * c + i];
         for (j = 0; j < 8; j++) {
             loc = (x + j + var->xoffset) * (var->bits_per_pixel / 8) + (y + i + var->yoffset) * fix->line_length;
@@ -107,15 +109,15 @@ void FrameBuffer::PutChar(int x, int y, char c,
                 ((bits >> (7 - j)) & 1)) {
                 switch (var->bits_per_pixel) {
                 case 8:
-                    p8  = (uint8_t *)(fb_info_->ptr) + loc;
+                    p8  = (uint8_t *)(fb_info_->ptr + loc);
                     *p8 = color;
                 case 16:
-                    p16  = (uint16_t *)(fb_info_->ptr) + loc;
+                    p16  = (uint16_t *)(fb_info_->ptr + loc);
                     *p16 = color;
                     break;
                 case 24:
                 case 32:
-                    p32  = (uint32_t *)(fb_info_->ptr) + loc;
+                    p32  = (uint32_t *)(fb_info_->ptr + loc);
                     *p32 = color;
                     break;
                 }
@@ -124,77 +126,21 @@ void FrameBuffer::PutChar(int x, int y, char c,
     }
 }
 
-int FrameBuffer::PutString(int x, int y, char *s, int maxlen,
-                           int color, bool clear, int clearlen)
+int32_t FrameBuffer::PutString(int32_t x, int32_t y, const char *s, uint32_t maxlen,
+                               uint32_t color, bool clear, int32_t clearlen)
 {
-    int i;
-    int w = 0;
+    int32_t w = 0;
 
     if (clear) {
         ClearArea(x, y, clearlen * 8, 8);
     }
 
-    for (i = 0; i < strlen(s) && i < maxlen; i++) {
+    for (uint32_t i = 0; i < strlen(s) && i < maxlen; i++) {
         PutChar((x + 8 * i), y, s[i], color);
         w += 8;
     }
 
     return w;
-}
-
-void FrameBuffer::DrawPixel(int x, int y, unsigned color)
-{
-    void *fbmem;
-
-    fbmem = fb_info_->ptr;
-    switch (fb_info_->var.bits_per_pixel) {
-    case 8: {
-        uint8_t *p;
-        p = (uint8_t *)fbmem + fb_info_->fix.line_length * y;
-        p += x;
-        *p = color;
-    } break;
-    case 16: {
-        unsigned short c;
-        unsigned r = (color >> 16) & 0xff;
-        unsigned g = (color >> 8) & 0xff;
-        unsigned b = (color >> 0) & 0xff;
-        uint16_t *p;
-        r = r * 32 / 256;
-        g = g * 64 / 256;
-        b = b * 32 / 256;
-        c = (r << 11) | (g << 5) | (b << 0);
-        p = (uint16_t *)fbmem + fb_info_->fix.line_length * y;
-        p += x;
-        *p = c;
-    } break;
-    case 24: {
-        unsigned char *p;
-        p    = (unsigned char *)fbmem + fb_info_->fix.line_length * y + 3 * x;
-        *p++ = color;
-        *p++ = color >> 8;
-        *p   = color >> 16;
-    } break;
-    default: {
-        uint32_t *p;
-        p = (uint32_t *)fbmem + fb_info_->fix.line_length * y;
-        p += x;
-        *p = color;
-    } break;
-    }
-}
-
-void FrameBuffer::ScreenSolid(uint32_t color)
-{
-    uint32_t x, y;
-    uint32_t h = fb_info_->var.yres;
-    uint32_t w = fb_info_->var.xres;
-
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            DrawPixel(x, y, color);
-        }
-    }
 }
 
 int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxlen,
@@ -203,7 +149,7 @@ int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxl
     int32_t w    = 0;
     char str[40] = {0};
 
-    int32_t len = snprintf(str, sizeof(str), "%d", value);
+    int32_t len = sprintf(str, "%d", value);
     str[len]    = 0;
 
     if (clear) {
@@ -216,6 +162,40 @@ int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxl
     }
 
     return w;
+}
+
+void FrameBuffer::DrawPixel(int32_t x, int32_t y, uint32_t color)
+{
+    uint8_t *pucPen8 = fb_info_->ptr + y * fb_info_->i_line_width + x * fb_info_->i_pixel_width;
+    uint16_t *pwPen16;
+    uint32_t *pdwPen32;
+    int32_t iRed, iGreen, iBlue;
+
+    pwPen16  = (uint16_t *)pucPen8;
+    pdwPen32 = (uint32_t *)pucPen8;
+
+    switch (fb_info_->var.bits_per_pixel) {
+    case 8: {
+        *pucPen8 = color; /*对于8BPP：color 为调色板的索引值，其颜色取决于调色板的数值*/
+        break;
+    }
+    case 16: {
+        iRed     = (color >> 16) & 0xff;
+        iGreen   = (color >> 8) & 0xff;
+        iBlue    = (color >> 0) & 0xff;
+        color    = ((iRed >> 3) << 11) | ((iGreen >> 2) << 5) | (iBlue >> 3); /*格式：RGB565*/
+        *pwPen16 = color;
+        break;
+    }
+    case 32: {
+        *pdwPen32 = color;
+        break;
+    }
+    default: {
+        // DBG_PRINTF("can't surport %dbpp", t_fb_var_.bits_per_pixel);
+        break;
+    }
+    }
 }
 
 void FrameBuffer::DrawLine(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color)
@@ -285,6 +265,18 @@ void FrameBuffer::DrawCircle(int32_t x, int32_t y, int32_t r, uint32_t color)
         if (num > 0) {
             b--;
             a--;
+        }
+    }
+}
+
+void FrameBuffer::ScreenSolid(uint32_t color)
+{
+    uint32_t h = fb_info_->var.yres;
+    uint32_t w = fb_info_->var.xres;
+
+    for (uint32_t y = 0; y < h; y++) {
+        for (uint32_t x = 0; x < w; x++) {
+            DrawPixel(x, y, color);
         }
     }
 }
