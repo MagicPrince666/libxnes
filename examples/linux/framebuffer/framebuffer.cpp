@@ -31,18 +31,13 @@ FrameBuffer::~FrameBuffer()
     ScreenSolid(0x0);
 
     if (fb_info_->ptr) {
-        int32_t stat = munmap(fb_info_->ptr, fb_info_->fix.smem_len);
+        int32_t stat = munmap(fb_info_->ptr, screensize_);
         if (stat < 0) {
             perror("Error munmap'ing framebuffer device");
         }
     }
     if (fb_info_->fd > 0) {
         close(fb_info_->fd);
-    }
-
-    if (bl_fd_) {
-        write(bl_fd_, "1", 1);
-        close(bl_fd_);
     }
 }
 
@@ -55,18 +50,18 @@ bool FrameBuffer::Init()
     IOCTL1(fb_info_->fd, FBIOGET_VSCREENINFO, &fb_info_->var);
     IOCTL1(fb_info_->fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
 
-    printf("fb res %dx%d virtual %dx%d, smem_len %d, bpp %d\n",
+    printf("fb res %dx%d virtual %dx%d, line_length %d, bpp %d\n",
            fb_info_->var.xres, fb_info_->var.yres,
            fb_info_->var.xres_virtual, fb_info_->var.yres_virtual,
            fb_info_->fix.line_length, fb_info_->var.bits_per_pixel);
 
     /*计算屏幕缓冲区大小*/
-    int32_t screensize = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
+    screensize_ = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
 
     fb_info_->i_line_width  = fb_info_->var.xres * fb_info_->var.bits_per_pixel / 8;
     fb_info_->i_pixel_width = fb_info_->var.bits_per_pixel / 8;
 
-    fb_info_->ptr = (uint8_t *)mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
+    fb_info_->ptr = mmap(nullptr, screensize_, PROT_WRITE | PROT_READ,
                                     MAP_SHARED, fb_info_->fd, 0);
     // spdlog::info("ptr {} size {}", fb_info_->ptr, screensize);
 
@@ -109,15 +104,15 @@ void FrameBuffer::PutChar(int32_t x, int32_t y, char c,
                 ((bits >> (7 - j)) & 1)) {
                 switch (var->bits_per_pixel) {
                 case 8:
-                    p8  = (uint8_t *)(fb_info_->ptr + loc);
+                    p8  = (uint8_t *)(fb_info_->ptr) + loc;
                     *p8 = color;
                 case 16:
-                    p16  = (uint16_t *)(fb_info_->ptr + loc);
+                    p16  = (uint16_t *)(fb_info_->ptr) + loc;
                     *p16 = color;
                     break;
                 case 24:
                 case 32:
-                    p32  = (uint32_t *)(fb_info_->ptr + loc);
+                    p32  = (uint32_t *)(fb_info_->ptr) + loc;
                     *p32 = color;
                     break;
                 }
@@ -166,7 +161,7 @@ int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxl
 
 void FrameBuffer::DrawPixel(int32_t x, int32_t y, uint32_t color)
 {
-    uint8_t *pucPen8 = fb_info_->ptr + y * fb_info_->i_line_width + x * fb_info_->i_pixel_width;
+    uint8_t *pucPen8 = (uint8_t *)(fb_info_->ptr) + y * fb_info_->i_line_width + x * fb_info_->i_pixel_width;
     uint16_t *pwPen16;
     uint32_t *pdwPen32;
     int32_t iRed, iGreen, iBlue;

@@ -132,7 +132,7 @@ private:
     struct fb_info {
         int fd;
 
-        uint8_t *ptr;
+        void *ptr;
 
         struct fb_var_screeninfo var;
         struct fb_fix_screeninfo fix;
@@ -145,7 +145,7 @@ private:
 
     std::shared_ptr<struct fb_info> fb_info_;
     std::string fb_name_;
-    int bl_fd_{-1};
+    int32_t screensize_;
 };
 
 #define RGB_BLACK 0x000000
