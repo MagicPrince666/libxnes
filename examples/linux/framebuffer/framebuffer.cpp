@@ -66,7 +66,7 @@ bool FrameBuffer::Init()
     /*计算屏幕缓冲区大小*/
     int32_t screensize = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
 
-    fb_info_->ptr = (uint8_t *)mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
+    fb_info_->ptr = mmap(nullptr, screensize, PROT_WRITE | PROT_READ,
                                     MAP_SHARED, fb_info_->fd, 0);
 
     ASSERT(fb_info_->ptr != MAP_FAILED);
