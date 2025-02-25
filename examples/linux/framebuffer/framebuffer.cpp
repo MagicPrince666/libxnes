@@ -23,13 +23,10 @@
 
 FrameBuffer::FrameBuffer(std::string dev) : fb_name_(dev)
 {
-    fb_info_ = std::make_shared<struct fb_info>();
 }
 
 FrameBuffer::~FrameBuffer()
 {
-    ScreenSolid(0x0);
-
     if (fb_info_->ptr) {
         int32_t stat = munmap(fb_info_->ptr, screensize_);
         if (stat < 0) {
@@ -43,6 +40,7 @@ FrameBuffer::~FrameBuffer()
 
 bool FrameBuffer::Init()
 {
+    fb_info_ = std::make_shared<struct fb_info>();
     fb_info_->fd = open(fb_name_.c_str(), O_RDWR);
 
     ASSERT(fb_info_->fd >= 0);
@@ -73,13 +71,12 @@ bool FrameBuffer::Init()
 
 void FrameBuffer::ClearArea(int32_t x, int32_t y, int32_t w, int32_t h)
 {
-    int32_t i = 0;
     int32_t loc;
     char *fbuffer                 = (char *)fb_info_->ptr;
     struct fb_var_screeninfo *var = &fb_info_->var;
     struct fb_fix_screeninfo *fix = &fb_info_->fix;
 
-    for (i = 0; i < h; i++) {
+    for (int32_t i = 0; i < h; i++) {
         loc = (x + var->xoffset) * (var->bits_per_pixel / 8) + (y + i + var->yoffset) * fix->line_length;
         memset(fbuffer + loc, 0, w * var->bits_per_pixel / 8);
     }
@@ -195,7 +192,6 @@ void FrameBuffer::DrawPixel(int32_t x, int32_t y, uint32_t color)
 
 void FrameBuffer::DrawLine(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color)
 {
-    int32_t t;
     int32_t xerr = 0, yerr = 0, delta_x, delta_y, distance;
     int32_t incx, incy, uRow, uCol;
     delta_x = x2 - x1; // 计算坐标增量
@@ -224,7 +220,7 @@ void FrameBuffer::DrawLine(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint3
         distance = delta_y;
     }
 
-    for (t = 0; t <= distance + 1; t++) { // 画线输出
+    for (int32_t t = 0; t <= distance + 1; t++) { // 画线输出
         DrawPixel(uRow, uCol, color);
         xerr += delta_x;
         yerr += delta_y;
