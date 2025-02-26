@@ -62,7 +62,7 @@ bool FrameBuffer::Init()
            fb_info_->fix.line_length, fb_info_->var.bits_per_pixel);
 
     /*计算屏幕缓冲区大小*/
-    screensize_ = fb_info_->var.yres_virtual * fb_info_->var.xres_virtual * fb_info_->var.bits_per_pixel / 8;
+    screensize_ = fb_info_->fix.smem_len;
 
     fb_info_->ptr = mmap(nullptr, screensize_, PROT_WRITE | PROT_READ,
                          MAP_SHARED, fb_info_->fd, 0);
