@@ -127,6 +127,16 @@
       * (x1,y1),(x2,y2):矩形的对角坐标
       */
      void DrawRectangle(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color);
+
+     /**
+      * @brief 关背光
+      */
+     void Blank(void);
+
+     /**
+      * @brief 开背光
+      */
+     void Unblank(void);
  
  private:
      struct fb_info {

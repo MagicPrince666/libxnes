@@ -27,6 +27,8 @@ FrameBuffer::FrameBuffer(std::string dev) : fb_name_(dev)
 
 FrameBuffer::~FrameBuffer()
 {
+    ScreenSolid(RGB_BLACK);
+    Blank();
     if (fb_info_->ptr) {
         int32_t stat = munmap(fb_info_->ptr, screensize_);
         if (stat < 0) {
@@ -283,4 +285,32 @@ void FrameBuffer::DrawRectangle(int32_t x1, int32_t y1, int32_t x2, int32_t y2, 
     DrawLine(x1, y1, x1, y2, color);
     DrawLine(x1, y2, x2, y2, color);
     DrawLine(x2, y1, x2, y2, color);
+}
+
+void FrameBuffer::Blank(void)
+{
+    if (ioctl(fb_info_->fd, FBIOBLANK, FB_BLANK_NORMAL) == -1) {
+        std::cerr << "Failed to blank display" << std::endl;
+        return;
+    }
+}
+
+void FrameBuffer::Unblank(void)
+{
+    if (ioctl(fb_info_->fd, FBIOBLANK, FB_BLANK_UNBLANK) == -1) {
+        std::cerr << "Failed to unblank display" << std::endl;
+        return;
+    }
+
+    if (ioctl(fb_info_->fd, FBIOGET_VSCREENINFO, fb_info_->var) == -1) {
+        std::cerr << "Failed to fetch screen info" << std::endl;
+        return;
+    }
+
+    fb_info_->var.yoffset = 0;
+
+    if (ioctl(fb_info_->fd, FBIOPAN_DISPLAY, fb_info_->var) == -1) {
+        std::cerr << "Failed to pan display" << std::endl;
+        return;
+    }
 }
