@@ -40,13 +40,19 @@ FrameBuffer::~FrameBuffer()
 
 bool FrameBuffer::Init()
 {
-    fb_info_ = std::make_shared<struct fb_info>();
+    fb_info_     = std::make_shared<struct fb_info>();
     fb_info_->fd = open(fb_name_.c_str(), O_RDWR);
 
     ASSERT(fb_info_->fd >= 0);
 
-    IOCTL1(fb_info_->fd, FBIOGET_VSCREENINFO, &fb_info_->var);
+    // Make sure that the display is on.
+    if (ioctl(fb_info_->fd, FBIOBLANK, FB_BLANK_UNBLANK) != 0) {
+        perror("ioctl(FBIOBLANK)");
+        // return;
+    }
+
     IOCTL1(fb_info_->fd, FBIOGET_FSCREENINFO, &fb_info_->fix);
+    IOCTL1(fb_info_->fd, FBIOGET_VSCREENINFO, &fb_info_->var);
 
     printf("fb res %dx%d virtual %dx%d, line_length %d, bpp %d\n",
            fb_info_->var.xres, fb_info_->var.yres,
@@ -54,18 +60,15 @@ bool FrameBuffer::Init()
            fb_info_->fix.line_length, fb_info_->var.bits_per_pixel);
 
     /*计算屏幕缓冲区大小*/
-    screensize_ = fb_info_->var.xres * fb_info_->var.yres * fb_info_->var.bits_per_pixel / 8;
-
-    fb_info_->i_line_width  = fb_info_->var.xres * fb_info_->var.bits_per_pixel / 8;
-    fb_info_->i_pixel_width = fb_info_->var.bits_per_pixel / 8;
+    screensize_ = fb_info_->var.yres_virtual * fb_info_->var.xres_virtual * fb_info_->var.bits_per_pixel / 8;
 
     fb_info_->ptr = mmap(nullptr, screensize_, PROT_WRITE | PROT_READ,
-                                    MAP_SHARED, fb_info_->fd, 0);
+                         MAP_SHARED, fb_info_->fd, 0);
     // spdlog::info("ptr {} size {}", fb_info_->ptr, screensize);
 
     ASSERT(fb_info_->ptr != MAP_FAILED);
 
-    ScreenSolid(RGB_RED);
+    ScreenSolid(RGB_BLUE);
     return true;
 }
 
@@ -158,29 +161,31 @@ int32_t FrameBuffer::PutValue(int32_t x, int32_t y, int32_t value, uint32_t maxl
 
 void FrameBuffer::DrawPixel(int32_t x, int32_t y, uint32_t color)
 {
-    uint8_t *pucPen8 = (uint8_t *)(fb_info_->ptr) + y * fb_info_->i_line_width + x * fb_info_->i_pixel_width;
-    uint16_t *pwPen16;
-    uint32_t *pdwPen32;
     int32_t iRed, iGreen, iBlue;
-
-    pwPen16  = (uint16_t *)pucPen8;
-    pdwPen32 = (uint32_t *)pucPen8;
-
     switch (fb_info_->var.bits_per_pixel) {
+    case 1: {
+        uint8_t *pucPen8 = (uint8_t *)(fb_info_->ptr) + (x + fb_info_->var.xoffset) + (y + fb_info_->var.yoffset) * fb_info_->var.xres;
+        *pucPen8         = color;
+        break;
+    }
     case 8: {
-        *pucPen8 = color; /*对于8BPP：color 为调色板的索引值，其颜色取决于调色板的数值*/
+        uint8_t *pucPen8 = (uint8_t *)(fb_info_->ptr) + (x + fb_info_->var.xoffset) + (y + fb_info_->var.yoffset) * fb_info_->fix.line_length;
+        *pucPen8         = color; /*对于8BPP：color 为调色板的索引值，其颜色取决于调色板的数值*/
         break;
     }
     case 16: {
-        iRed     = (color >> 16) & 0xff;
-        iGreen   = (color >> 8) & 0xff;
-        iBlue    = (color >> 0) & 0xff;
-        color    = ((iRed >> 3) << 11) | ((iGreen >> 2) << 5) | (iBlue >> 3); /*格式：RGB565*/
-        *pwPen16 = color;
+        uint16_t *pwPen16 = (uint16_t *)(fb_info_->ptr) + (x + fb_info_->var.xoffset) + (y + fb_info_->var.yoffset) * fb_info_->fix.line_length / 2;
+        iRed              = (color >> 16) & 0xff;
+        iGreen            = (color >> 8) & 0xff;
+        iBlue             = (color >> 0) & 0xff;
+        color             = ((iRed >> 3) << 11) | ((iGreen >> 2) << 5) | (iBlue >> 3); /*格式：RGB565*/
+        *pwPen16          = color;
         break;
     }
+    case 24:
     case 32: {
-        *pdwPen32 = color;
+        uint32_t *pdwPen32 = (uint32_t *)(fb_info_->ptr) + (x + fb_info_->var.xoffset) + (y + fb_info_->var.yoffset) * fb_info_->fix.line_length / 4;
+        *pdwPen32          = color;
         break;
     }
     default: {
